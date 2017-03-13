@@ -1,0 +1,27 @@
+TO DO
+-----
+
+Features
+--------
+1 - Open Argument Nodes
+
+2 - Redraw Conclusuion nodes so text is centred and make them a little smaller).
+2 - Update root argument node id/prefix/suffix based on dt node chnages.
+
+3 - Undo Event handled for undoing an added argument node.
+
+3 - Title on Argument Window should change in reflection of id changes!
+3 - Delete key deletes selected object (including multiple).
+3 - Right Clicking on multiple selection enables removing of everything in selection.
+3 - Change selection colour (to the multiple select green).
+3 - Graph Properties Box
+
+4 - Tools tips on toolbar buttons.
+4 - Make maketoolbar, makepropertiesdialogue, factories that return the toolbar, property, etc.
+
+Bugs
+ - Multiple selections with shift don't register as multiple selections.
+
+Documentation
+ - Javadoc Function Headers
+ - So much more!

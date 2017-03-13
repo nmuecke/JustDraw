@@ -1,0 +1,482 @@
+/*
+ * @(#)JustDrawXMLWriter.java 0.1 14-JUN-04
+ * 
+ * Copyright (c) 2004, John Avery All rights reserved.
+ * Portions Copyright (c) 2001-2004, Gaudenz Alder All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *  - Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer. - Resdistributions in
+ * binary form must reproduce the above copyright notice, this list of
+ * conditions and the following disclaimer in the documentation and/or other
+ * materials provided with the distribution. - Neither the name of JGraph nor
+ * the names of its contributors may be used to endorse or promote products
+ * derived from this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *  
+ */
+
+package justdraw;
+
+import java.awt.geom.Rectangle2D;
+
+import java.util.Hashtable;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Enumeration;
+import java.util.Vector;
+import java.util.TreeMap;
+
+import javax.swing.JProgressBar;
+import javax.swing.JFrame;
+
+import java.awt.BorderLayout;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import java.io.*;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import org.xml.sax.SAXParseException;
+
+import java.awt.Point;
+import java.awt.geom.Point2D;
+
+import org.jgraph.*;
+import org.jgraph.event.*;
+import org.jgraph.event.*;
+import org.jgraph.graph.*;
+
+import com.uob.utility.HTMLConverter;
+
+public class JustDrawXMLWriter
+{
+  
+  public JustDrawXMLWriter()
+  {
+  }
+  
+  public static void exportXML(String filename, JustDrawDocument document)
+  {
+    AutoId autoId = new AutoId("AutoId");
+    File file = new File(filename);
+    BufferedWriter writer;
+    int rootCount;
+    Object root, child, target, notsure;
+    Iterator children, edges;    
+    Edge currentEdge;
+    Rectangle2D bounds;
+    String id;
+        
+    try
+    {
+      writer = new BufferedWriter(new FileWriter(file));
+      writer.write("<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n" +
+      		       "<!DOCTYPE knowledgeBase [\n" +
+      		       "<!ELEMENT knowledgeBase (docPrefix, rootNodes,decisionNodes,argumentNodes) >\n" +
+      		       "<!ELEMENT rootNodes (rootNode*) >\n" +
+      		       "<!ELEMENT rootNode EMPTY >\n" +
+      		       "<!ELEMENT docPrefix (prefix) >\n" +
+      		       "<!ELEMENT docprefix (#PCDATA) >\n" +
+      		       "<!ELEMENT decisionNodes (decisionNode*) >\n" +
+      		       "<!ELEMENT argumentNodes (argumentNode*) >\n" +
+                   "<!ELEMENT decisionNode (prefix,postfix,title,graphID,displayType,relevance,decisionAnswers,notSureNodes) >\n" +
+                   "<!ELEMENT argumentNode (prefix,postfix,title,graphID,displayType,relevance,argumentAnswers,notSureNodes) >\n" +
+                   "<!ELEMENT prefix (#PCDATA) >\n" +
+                   "<!ELEMENT postfix (#PCDATA) >\n" +
+                   "<!ELEMENT title (#PCDATA) >\n" +
+                   "<!ELEMENT grapID (#PCDATA) >\n" +
+                   "<!ELEMENT displayType (#PCDATA) >\n" +
+                   "<!ELEMENT relevance (#PCDATA) >\n" +
+                   "<!ELEMENT decisionAnswers (decisionAnswer*) >\n" +
+                   "<!ELEMENT argumentAnswers (argumentAnswer*) >\n" +
+                   "<!ELEMENT decisionAnswer (text,destination?,threshold,actions) >\n" +
+                   "<!ELEMENT argumentAnswer (text,threshold) >\n" +
+                   "<!ELEMENT text (#PCDATA) >\n" +
+                   "<!ELEMENT threshold (#PCDATA) >\n" +
+                   "<!ELEMENT actions (add|remove|clear|script|setVariable)* >\n" +
+                   "<!ELEMENT add EMPTY >\n" +
+                   "<!ELEMENT remove EMPTY >\n" +
+		           "<!ELEMENT clear EMPTY >\n" +
+		           "<!ELEMENT script (#PCDATA) >\n" +
+		           "<!ELEMENT setVariable EMPTY >\n" +
+		           "<!ELEMENT setAction EMPTY >\n" +
+		           "<!ELEMENT badAction EMPTY >\n" +
+		           "<!ELEMENT notSureNodes (notSureNode*) >\n" +
+		           "<!ELEMENT notSureNode EMPTY >\n" +
+		           "<!ELEMENT destination EMPTY >\n" +
+		           "<!ATTLIST rootNode\n name CDATA #REQUIRED\n type CDATA #REQUIRED\n refid CDATA #REQUIRED\n xpos CDATA #IMPLIED\nypos CDATA #IMPLIED>\n" +
+		           "<!ATTLIST decisionNode\n  id ID #IMPLIED\n  dataRef CDATA #IMPLIED\n  dataSource CDATA #IMPLIED\n  xpos CDATA #IMPLIED\n  ypos CDATA #IMPLIED>\n" +
+		           "<!ATTLIST argumentNode\n  id ID #IMPLIED\n  dataRef CDATA #IMPLIED\n  dataSource CDATA #IMPLIED\n xpos CDATA #IMPLIED\n  ypos CDATA #IMPLIED>\n" +
+                   "<!ATTLIST decisionAnswer\n  dataRef CDATA #IMPLIED\n  dataSource CDATA  #IMPLIED\n  weight CDATA #IMPLIED\n summary CDATA #IMPLIED>\n" +
+                   "<!ATTLIST argumentAnswer\n  dataRef CDATA #IMPLIED\n  dataSource CDATA  #IMPLIED\n  weight CDATA #IMPLIED>\n" +
+                   "<!ATTLIST destination\n  refid CDATA #REQUIRED >\n<!ATTLIST notSureNode\n  refid CDATA #REQUIRED >\n" +
+                   "<!ATTLIST add\n  dataRef CDATA #IMPLIED\n  dataSource CDATA  #IMPLIED\n  filterName CDATA #REQUIRED\n  filterParam CDATA #REQUIRED >\n" +
+                   "<!ATTLIST remove\n  dataRef CDATA #IMPLIED\n  dataSource CDATA  #IMPLIED\n filterName CDATA #REQUIRED\n  filterParam CDATA #REQUIRED >\n" +
+		           "<!ATTLIST script\n  dataRef CDATA #IMPLIED\n  dataSource CDATA  #IMPLIED >\n" +
+		           "<!ATTLIST setVariable\n  dataRef CDATA #IMPLIED\n  dataSource CDATA  #IMPLIED\n  variableName CDATA #REQUIRED\n  variableValue CDATA #REQUIRED >\n" +
+		           "<!ATTLIST badAction\n  dataRef CDATA #IMPLIED\n  dataSource CDATA  #IMPLIED\n  actionName CDATA #REQUIRED\n  actionValue CDATA #REQUIRED >\n" +
+		           "<!ATTLIST setAction\n  dataRef CDATA #IMPLIED\n  dataSource CDATA  #IMPLIED\n  actionType CDATA #REQUIRED\n  actionValue CDATA #REQUIRED >\n]>");
+
+      writer.newLine();
+      writer.write("<knowledgeBase>");
+      writer.newLine();   
+      if( document.getDocPrefix().equalsIgnoreCase( "" )){
+    	  writer.write("<docPrefix>\n <docprefix></docprefix>\n</docPrefix>" );
+         }
+      else{
+         writer.write("<docPrefix>\n <docprefix>"+document.getDocPrefix()+"</docprefix>\n</docPrefix>" );
+         }
+      writer.newLine();         
+//       Write the root nodes
+      rootCount = document.graph.getModel().getRootCount();    
+      writer.write("<rootNodes>");
+      writer.newLine();         
+      for (int i  = 0; i < rootCount; i++)
+      {
+        root = document.graph.getModel().getRootAt(i);
+	if (root instanceof DecisionTreeNode)
+	{
+	  if (((DecisionTreeNode)root).isRoot())
+	  {
+	    id = ((DecisionTreeNode)root).getId();
+	    if (id.equals("") || id == null || id == "")
+	      ((DecisionTreeNode)root).setId(autoId.getNextId());
+
+	    writer.write("<rootNode name=\""+ ((DecisionTreeNode)root).getId() +"\" type=\"basic\" refid=\"" + ((DecisionTreeNode)root).getId() +"\" />");
+	    writer.newLine();   
+	  }
+	}
+      }
+      writer.write("</rootNodes>");   
+      writer.newLine();
+      writer.write("<decisionNodes>");
+      writer.newLine();
+      rootCount = document.graph.getModel().getRootCount();    
+      for (int i  = 0; i < rootCount; i++)
+      {
+        root = document.graph.getModel().getRootAt(i);
+	if (root instanceof DecisionTreeNode)
+	{
+	  id = ((DecisionTreeNode)root).getId();	    
+	  if (id.equals("") || id == null || id == "")
+	    ((DecisionTreeNode)root).setId(autoId.getNextId());		
+	  bounds = document.graph.getGraphLayoutCache().getMapping(root, false).getBounds();
+	  writer.write("<decisionNode id=\"" + ((DecisionTreeNode)root).getId() + "\" dataRef=\"null\" dataSource=\"null\" xpos=\"" + bounds.getX() + "\" ypos=\"" + bounds.getY() + "\">");
+	  writer.newLine();
+	  writer.write("  <prefix>" + ((DecisionTreeNode)root).getPrefix() + "</prefix>");
+	  writer.newLine();
+	  writer.write("  <postfix>" + ((DecisionTreeNode)root).getSuffix() + "</postfix>");
+	  writer.newLine();
+	  writer.write("  <title>" + ((DecisionTreeNode)root).getTitle() + "</title>");
+	  writer.newLine();
+	  writer.write("  <graphID>" + ((DecisionTreeNode)root).getGraph_id() + "</graphID>");
+	  writer.newLine();
+	  writer.write("  <displayType>" + ((DecisionTreeNode)root).getDisplay_type() + "</displayType>");
+	  writer.newLine();
+	  writer.write("  <relevance>" + ((DecisionTreeNode)root).getRelevance() + "</relevance>");
+	  writer.newLine();
+	  writer.write("  <decisionAnswers>");
+	  writer.newLine();
+          children = ((DecisionTreeNode)root).getChildren().iterator();
+          while (children.hasNext())
+          {        
+            child = children.next();
+            if (child instanceof Port)
+	    {
+	      edges = ((Port)child).edges();
+        TreeMap answerStrings = new TreeMap();
+        //String[] answerStrings = new String[]{};
+        
+        
+         String currentString = "";
+	      while (edges.hasNext())
+	      {
+	    	  
+	        currentEdge = (Edge)edges.next();
+		if (currentEdge.getSource().equals(child))
+		{
+		  if (currentEdge instanceof DecisionTreeArc)
+		  {
+	/////////////// ?? proble with not adding the content of currentSting to itself on a rerun ??? fixed.		 
+		    currentString = currentString + "    <decisionAnswer dataRef=\"null\" dataSource=\"null\" weight = \"" + ((DecisionTreeArc)currentEdge).getWeight() + "\" position = \"" + ((DecisionTreeArc)currentEdge).getPosition() + "\" summary = \"" + ((DecisionTreeArc)currentEdge).getSummary() + "\">\n      <text>" + ((DecisionTreeArc)currentEdge).getClaim() + "</text>\n";
+		    target = ((DefaultPort)currentEdge.getTarget()).getParent();
+		    if (target instanceof DecisionTreeNode)
+		    {
+		      id = ((DecisionTreeNode)target).getId();	    
+		      if (id.equals("") || id == null || id == "")
+		        ((DecisionTreeNode)target).setId(autoId.getNextId());
+		      currentString = currentString + "      <destination refid=\"" + ((DecisionTreeNode)target).getId() + "\"/>";
+	
+		    }
+		    if (target instanceof ConclusionNode)		    
+		    {
+		      id = ((ConclusionNode)target).getId();
+	              if (id.equals("") || id == null || id == "")
+	                ((ConclusionNode)target).setId(autoId.getNextId());
+		      currentString = currentString + "      <destination refid=\"" + ((ConclusionNode)target).getId() + "\"/>";
+	
+		    }
+		    currentString = currentString + "\n      <threshold>" + ((DecisionTreeArc)currentEdge).getThreshold() +"</threshold>\n      <actions>\n";
+
+		    Iterator actions = ((Vector)((DecisionTreeArc)currentEdge).getActions()).iterator();
+		    TreeArcAction currentAction;
+		    
+		    while (actions.hasNext())
+		    {
+		      currentAction = (TreeArcAction)actions.next();
+		      if (currentAction.getType().toLowerCase().equals("add"))
+		      {
+		        currentString = currentString + "        <add filterName=\"" +
+              HTMLConverter.escape(currentAction.getVariable()) +
+              "\" filterParam=\"" + HTMLConverter.escape(currentAction.getValue()) +"\"/>\n";
+		      }
+		      else if (currentAction.getType().toLowerCase().equals("remove"))
+		      {
+		        currentString = currentString + "        <remove filterName=\"" +
+              HTMLConverter.escape(currentAction.getVariable()) + "\" filterParam=\"" + HTMLConverter.escape(currentAction.getValue()) +"\"/>\n";
+		      }
+		      else if (currentAction.getType().toLowerCase().equals("clear"))
+		      {
+		        currentString = currentString + "        <clear filterName=\"" +
+              HTMLConverter.escape(currentAction.getVariable()) + "\" filterParam=\"" + HTMLConverter.escape(currentAction.getValue()) +"\"/>\n";
+		      }
+		      else if (currentAction.getType().toLowerCase().equals("script"))
+		      {
+		        currentString = currentString +"        <script>\n" +
+		          HTMLConverter.escape(currentAction.getValue()) +"\n</script>\n";
+		      }
+		      else if (currentAction.getType().toLowerCase().equals("setvariable") ||  currentAction.getType().toLowerCase().equals("setvar") || currentAction.getType().toLowerCase().equals("set") || currentAction.getType().toLowerCase().equals("set variable"))
+		      {
+		        currentString = currentString +"        <setVariable variableName=\"" +
+              HTMLConverter.escape(currentAction.getVariable()) + "\" variableValue=\"" + HTMLConverter.escape(currentAction.getValue()) +"\"/>\n";
+		      }
+		      else if (currentAction.getType().toLowerCase().equals("setaction") ||  currentAction.getType().toLowerCase().equals("action") )
+		      {
+		        currentString = currentString +"        <setAction actionType=\"" +
+                  HTMLConverter.escape( currentAction.getVariable()) + "\" actionValue=\"" + 
+                  HTMLConverter.escape(currentAction.getValue()) +"\"/>\n";
+		      }
+		      else //if (currentAction.getType().toLowerCase().equals("setAction") ||  currentAction.getType().toLowerCase().equals("action") )
+		      {
+		        currentString = currentString +"        <__badAction__ actionType=\"" +
+                  HTMLConverter.escape( currentAction.getVariable()) + "\" actionValue=\"" + 
+                  HTMLConverter.escape(currentAction.getValue()) +"\"/>\n";
+		      }
+		    }
+		  currentString = currentString +"      </actions>\n    </decisionAnswer>\n";
+		 ///// 
+		  System.out.println("Connection from " + root + " to " + ((DefaultPort)currentEdge.getTarget()).getParent());
+		  }
+		} 
+// maby here is the ptoblem??
+		System.out.println("CurrentString: " + currentString );
+		
+       //  answerStrings.put(new Integer(((DecisionTreeArc)currentEdge).getPosition()), currentString);
+	     }
+	   /*   
+       System.out.println("AnswerString: " + answerStrings);  
+       Iterator it = answerStrings.values().iterator();  
+       while (it.hasNext())
+       {
+         writer.write((String)it.next());
+       }
+       */
+	      writer.write( currentString );
+	   } 
+           
+    }
+      
+	  writer.write("  </decisionAnswers>");
+	  writer.newLine();
+	  if(((DecisionTreeNode)root).hasArgument)
+	  {
+	    writer.write("  <notSureNodes>");
+	    writer.newLine();
+	    notsure = ((JustDrawArgument)document.arguments.get(root)).getRootNode();	    	    
+	    children = ((ArgumentTreeNode)notsure).getChildren().iterator();
+            while (children.hasNext())
+            {        
+              child = children.next();
+              if (child instanceof Port)
+	      {
+	        edges = ((Port)child).edges();	      
+	        while (edges.hasNext())
+	        {
+	          currentEdge = (Edge)edges.next();
+		  if (currentEdge.getTarget().equals(child))
+		  {
+		    if (currentEdge instanceof ArgumentArc)
+		    {
+	              id = ((ArgumentTreeNode)((DefaultPort)currentEdge.getSource()).getParent()).getId();
+	              if (id.equals("") || id == null || id == "")
+	                ((ArgumentTreeNode)((DefaultPort)currentEdge.getSource()).getParent()).setId(autoId.getNextId());		    
+	    	      writer.write("    <notSureNode refid=\"" + ((ArgumentTreeNode)((DefaultPort)currentEdge.getSource()).getParent()).getId() + "\"/>");
+		      writer.newLine();
+		    }
+		  }
+		}  
+	      } 
+	    }    	    	    	    	       
+	    writer.write("  </notSureNodes>");
+	    writer.newLine();	    
+	  }
+	  else
+	  {
+	    writer.write("  <notSureNodes/>");
+	    writer.newLine();
+	  }
+	  writer.write("</decisionNode>");
+	  writer.newLine();
+	}
+	if (root instanceof ConclusionNode)
+	{
+          id = ((ConclusionNode)root).getId();	    
+	  if (id.equals("") || id == null || id == "")
+	    ((ConclusionNode)root).setId(autoId.getNextId());
+
+	  bounds = document.graph.getGraphLayoutCache().getMapping(root, false).getBounds();
+	  writer.write("<decisionNode id=\"" + ((ConclusionNode)root).getId() + "\" dataRef=\"null\" dataSource=\"null\" xpos=\"" + bounds.getX() + "\" ypos=\"" + bounds.getY() + "\">");
+	  writer.newLine();
+	  writer.write("  <prefix>" + ((ConclusionNode)root).getPrefix() + "</prefix>");
+	  writer.newLine();
+	  writer.write("  <postfix>" + ((ConclusionNode)root).getSuffix() + "</postfix>");
+	  writer.newLine();
+	  writer.write("  <title>" + ((ConclusionNode)root).getTitle() + "</title>");
+	  writer.newLine();
+	  writer.write("  <graphID>" + ((ConclusionNode)root).getGraph_id() + "</graphID>");
+	  writer.newLine();
+	  writer.write("  <displayType>" + ((ConclusionNode)root).getDisplay_type() + "</displayType>");
+	  writer.newLine();
+	  writer.write("  <relevance>" + ((ConclusionNode)root).getRelevance() + "</relevance>");
+	  writer.newLine();
+	  writer.write("  <decisionAnswers></decisionAnswers>");
+	  writer.newLine();	  
+	  writer.write("  <notSureNodes></notSureNodes>");
+	  writer.newLine();
+	  writer.write("</decisionNode>");
+	  writer.newLine();
+	}
+      }    
+      writer.write("</decisionNodes>");
+      writer.newLine();
+      writer.write("<argumentNodes>");
+      Enumeration e = document.arguments.elements();
+      Enumeration arguments;
+      JGraph currentGraph;
+      // int rootCount;
+      // Object root;
+      while (e.hasMoreElements())
+      {
+        currentGraph = ((JustDrawArgument)e.nextElement()).graph;
+	rootCount = currentGraph.getModel().getRootCount();    
+
+        for (int i  = 0; i < rootCount; i++)
+        {
+          root = currentGraph.getModel().getRootAt(i);
+	  if (root instanceof ArgumentTreeNode)
+	  {
+	    if (((ArgumentTreeNode)root).isRoot())
+	    {
+	    }
+	    else
+	    {
+	    bounds = currentGraph.getGraphLayoutCache().getMapping(root, false).getBounds();
+	    writer.write("<argumentNode id=\"" + ((ArgumentTreeNode)root).getId() + "\" dataRef=\"null\" dataSource=\"null\" xpos=\"" + bounds.getX() + "\" ypos=\"" + bounds.getY() + "\">");
+	    writer.newLine();
+	    writer.write("  <prefix>" + ((ArgumentTreeNode)root).getPrefix() + "</prefix>");
+	    writer.newLine();
+	    writer.write("  <postfix>" + ((ArgumentTreeNode)root).getSuffix() + "</postfix>");
+	    writer.newLine();
+	    writer.write("  <title>" + ((ArgumentTreeNode)root).getTitle() + "</title>");
+		writer.newLine();
+	//	writer.write("  <graphID>" + /*((ArgumentTreeNode)root).getGraph_id() +*/ "</graphID>");
+	//	writer.newLine();
+	//	writer.write("  <displayType>" + ((ArgumentTreeNode)root).getDisplay_type() + "</displayType>");
+	//	writer.newLine();
+		writer.write("  <relevance>" +  ((ArgumentTreeNode)root).getRelevance() +  "</relevance>");
+		writer.newLine();
+		  
+	    writer.write("  <argumentAnswers>");
+	    writer.newLine();
+
+	    arguments = ((ArgumentTreeNode)root).getClaims().elements();
+            while (arguments.hasMoreElements())
+            {        
+              child = arguments.nextElement();
+              writer.write("    <argumentAnswer dataRef=\"null\" dataSource=\"null\" weight=\"" + ((ArgumentClaim)child).getWeight() + "\">");
+  	      writer.newLine();
+	      writer.write("      <text>" + ((ArgumentClaim)child).getClaim() + "</text>");
+	      writer.newLine();
+	      writer.write("      <threshold>" + ((ArgumentClaim)child).getThreshold() + "</threshold>");
+	      writer.newLine();	      
+	      writer.write("  </argumentAnswer>");
+	      writer.newLine();	      	      
+            }
+	    writer.write("  </argumentAnswers>");
+	    writer.newLine();
+	    writer.write("  <notSureNodes>");
+	    writer.newLine();	    
+
+	    children = ((ArgumentTreeNode)root).getChildren().iterator();
+            while (children.hasNext())
+            {        
+              child = children.next();
+              if (child instanceof Port)
+	      {
+	        edges = ((Port)child).edges();	      
+	        while (edges.hasNext())
+	        {
+	          currentEdge = (Edge)edges.next();
+		  if (currentEdge.getTarget().equals(child))
+		  {
+		    if (currentEdge instanceof ArgumentArc)
+		    {
+	              id = ((ArgumentTreeNode)((DefaultPort)currentEdge.getSource()).getParent()).getId();
+	              if (id.equals("") || id == null || id == "")
+	                ((ArgumentTreeNode)((DefaultPort)currentEdge.getSource()).getParent()).setId(autoId.getNextId());		    		    
+	    	      writer.write("    <notSureNode refid=\"" + ((ArgumentTreeNode)((DefaultPort)currentEdge.getSource()).getParent()).getId() + "\"/>");
+		      writer.newLine();
+		    }
+		  }
+		}  
+	      } 
+	    }    
+	    writer.write("  </notSureNodes>");
+	    writer.newLine();
+	    writer.write("</argumentNode>");
+	    writer.newLine();
+	    }
+	  }	  
+        }
+      }      
+      writer.write("</argumentNodes>");
+      writer.newLine();
+      writer.write("</knowledgeBase>");
+      writer.newLine();            
+      writer.close();
+    }
+    catch (Exception ex)
+    {
+      // ** Show dialog here
+      ex.printStackTrace();
+    }
+  }  
+}
